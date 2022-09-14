@@ -1,6 +1,6 @@
 {
-  "name": "Restic",
-  "id": "restic",
+  "name": "Restic multi",
+  "id": "restic-mutli",
   "packaging_format": 1,
   "description": {
     "en": "Backup your server with restic.",
@@ -8,12 +8,12 @@
   },
   "version": "0.12.0~ynh9",
   "url": "https://restic.net/",
-    "upstream": {
-        "license": "BSD-2-Clause",
-        "website": "https://restic.net",
-        "admindoc": "https://restic.readthedocs.io/en/latest/",
-        "code": "https://github.com/restic/restic"
-    },
+  "upstream": {
+    "license": "BSD-2-Clause",
+    "website": "https://restic.net",
+    "admindoc": "https://restic.readthedocs.io/en/latest/",
+    "code": "https://github.com/restic/restic"
+  },
   "license": "BSD-2-Clause",
   "maintainer": {
     "name": "Lionel Coupouchetty-Ramouchetty",
@@ -21,12 +21,32 @@
     "url": "https://gnoobix.net"
   },
   "requirements": {
-        "yunohost": ">= 4.3.0"
+    "yunohost": ">= 4.3.0"
   },
   "multi_instance": true,
   "services": [],
   "arguments": {
-    "install" : [
+    "install": [
+      {
+        "name": "backup_server_type",
+        "type": "string",
+        "ask": {
+          "en": "Choose the type of backup server.",
+          "fr": "Choisissez le type du serveur de backup."
+        },
+        "choices": [
+          "sftp",
+          "s3"
+        ]
+      },
+      {
+        "name": "title_sftp",
+        "type": "display_text",
+        "ask": {
+          "en": "the text in english",
+          "fr": "<h2> SFTP configuration</h2>\n Remplissez uniquement cette partie si vous avez sélectionner sftp dans la liste déroulante."
+        }
+      },
       {
         "name": "server",
         "type": "string",
@@ -34,11 +54,20 @@
           "en": "Indicate the server where you want put your backups",
           "fr": "Indiquez le serveur où vous voulez faire vos sauvegardes"
         },
-        "help":{
+        "help": {
           "en": "IP address or resolvable hostname of your destination server",
           "fr": "Adresse IP ou nom résolvable de votre serveur de destination"
         },
-        "example": "example.com"
+        "example": "example.com",
+        "optional": true
+      },
+      {
+        "name": "the_name1",
+        "type": "display_text",
+        "ask": {
+          "en": "the text in english",
+          "fr": "the text in french"
+        }
       },
       {
         "name": "port",
@@ -47,26 +76,13 @@
           "en": "sftp port of your server",
           "fr": "Le port sftp de votre serveur"
         },
-        "help":{
+        "help": {
           "en": "Listening port of your sftp or ssh server. The default value is 22",
           "fr": "Le port d'écoute de votre serveur sftp ou ssh. La valeur par défaut est 22"
         },
         "example": "22",
-        "default": "22"
-      },
-      {
-        "name": "backup_path",
-        "type": "string",
-        "ask": {
-          "en": "The directory where you want your backup repositories to be created in",
-          "fr": "Le répertoire dans lequel les dépôts restic seront créés"
-        },
-        "help":{
-          "en": "A complete or relative path to an existing directory on the remote server writable by the remote backup user. Defaults to the login directory",
-          "fr": "Un chemin complet ou relatif vers un répertoire existant sur le serveur distant et accessible en écriture au compte utilisé pour la sauvegarde. Répertoire d'accueil par défaut"
-        },
-        "example": "./backups",
-    "default": "."
+        "default": "22",
+        "optional": true
       },
       {
         "name": "ssh_user",
@@ -75,7 +91,84 @@
           "en": "Indicate the ssh user to use to connect on this server",
           "fr": "Indiquez l'utilisateur ssh à utiliser pour se connecter au serveur"
         },
-        "example": "john"
+        "example": "john",
+        "optional": true
+      },
+      {
+        "name": "title_s3",
+        "type": "display_text",
+        "ask": {
+          "en": "the text in english",
+          "fr": "<h2> S3 configuration </h2>\n Remplissez uniquement cette partie si vous avez sélectionner S3 dans la liste déroulante."
+        }
+      },
+      {
+        "name": "s3_server",
+        "type": "string",
+        "ask": {
+          "en": "Indicate the S3 server.",
+          "fr": "Indiquez le serveur S3"
+        },
+        "example": "s3.my-server.fr"
+      },
+      {
+        "name": "s3_port",
+        "type": "number",
+        "ask": {
+          "en": "Indicate the S3 server's port.",
+          "fr": "Indiquez le port du serveur S3."
+        },
+        "example": "443",
+        "default": "443"
+      },
+      {
+        "name": "s3_aws_access_key_id",
+        "type": "string",
+        "ask": {
+          "en": "Indicate the AWS_ACCESS_KEY_ID.",
+          "fr": "Indiquez le AWS_ACCESS_KEY_ID."
+        },
+        "example": "PgVMPgNYr4TjmFp79"
+      },
+      {
+        "name": "s3_aws_secret_access_key",
+        "type": "string",
+        "ask": {
+          "en": "Indicate the AWS_SECRET_ACCESS_KEY.",
+          "fr": "Indiquez le AWS_SECRET_ACCESS_KEY."
+        },
+        "example": "OrERrSrABMF4856zerzeH9kEK3pyd5478"
+      },
+      {
+        "name": "s3_bucket",
+        "type": "string",
+        "ask": {
+          "en": "Indicate the bucket name on the S3 server.",
+          "fr": "Indiquez le nom du bucket sur le serveur S3."
+        },
+        "example": "my-backup-bucket"
+      },
+      {
+        "name": "title_restic",
+        "type": "display_text",
+        "ask": {
+          "en": "the text in english",
+          "fr": "<h2> Restic configuration</h2>"
+        }
+      },
+      {
+        "name": "backup_path",
+        "type": "string",
+        "ask": {
+          "en": "The directory where you want your backup repositories to be created in",
+          "fr": "Le répertoire dans lequel les dépôts restic seront créés"
+        },
+        "help": {
+          "en": "A complete or relative path to an existing directory on the remote server writable by the remote backup user. Defaults to the login directory",
+          "fr": "Un chemin complet ou relatif vers un répertoire existant sur le serveur distant et accessible en écriture au compte utilisé pour la sauvegarde. Répertoire d'accueil par défaut"
+        },
+        "example": "./backups",
+        "default": "."
       },
       {
         "name": "passphrase",
@@ -119,7 +212,7 @@
           "en": "Allow backup method to temporarily use more space?",
           "fr": "Permettre à la sauvegarde de consommer temporairement de l'espace supplémentaire?"
         },
-        "help":{
+        "help": {
           "en": "Some applications as Gitlab can't be backed up with the standard method and require extra space temporarily",
           "fr": "Certaines applications comme Gitlab ne peuvent être sauvegardées avec la méthode standard et nécessitent d'utiliser plus d'espace disque temporairement"
         },
@@ -134,6 +227,14 @@
         },
         "example": "Daily",
         "default": "*-*-* 0:15:00"
+      },
+      {
+        "name": "the_name2",
+        "type": "display_text",
+        "ask": {
+          "en": "the text in english",
+          "fr": "the text in french"
+        }
       },
       {
         "name": "check_on_calendar",

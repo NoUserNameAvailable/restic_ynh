@@ -1,0 +1,95 @@
+#!/bin/bash
+
+set -e
+
+###
+# Fetch information from YNH settings
+# SFTP Parameters to login
+#RESTIC_SERVER=$(yunohost app setting {{ app }} server)
+#RESTIC_SERVER_PORT=$(yunohost app setting {{ app }} port)
+#RESTIC_SERVER_USER=$(yunohost app setting {{ app }} ssh_user)
+
+# S3 parameters
+RESTIC_S3_SERVER=$(yunohost app setting {{ app }} s3_server)
+RESTIC_S3_PORT=$(yunohost app setting {{ app }} s3_port)
+RESTIC_S3_AWS_ACCESS_KEY_ID=$(yunohost app setting {{ app }} s3_aws_access_key_id)
+RESTIC_S3_AWS_SECRET_ACCESS_KEY=$(yunohost app setting {{ app }} s3_aws_secret_access_key)
+RESTIC_S3_BUCKET=$(yunohost app setting {{ app }} s3_bucket)
+
+# Path to write on remote server
+RESTIC_S3_BACKUP_PATH=$(yunohost app setting {{ app }} s3_backup_path)
+
+RESTIC_PASSWORD="$(yunohost app setting {{ app }} passphrase)"
+
+# SFTP
+#RESTIC_REPOSITORY_BASE=sftp://$RESTIC_SERVER_USER@$RESTIC_SERVER:$RESTIC_SERVER_PORT/$RESTIC_PATH/
+RESTIC_REPOSITORY_BASE=s3:/$RESTIC_S3_SERVER:$RESTIC_S3_PORT/$RESTIC_S3_BUCKET/$RESTIC_S3_BACKUP_PATH
+
+RESTIC_COMMAND=/usr/local/bin/{{ app }}
+LOGFILE=/var/log/restic_backup_{{ app }}.log
+ERRFILE=/var/log/restic_backup_{{ app }}.err
+
+# Export properties to perform the connection on the S3
+export AWS_ACCESS_KEY_ID=RESTIC_S3_AWS_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY=RESTIC_S3_AWS_SECRET_ACCESS_KEY
+
+do_need_mount() {
+    work_dir="$1"
+    name="$2"
+    repo="$3"
+    size="$4"
+    description="$5"
+    export RESTIC_PASSWORD
+    export RESTIC_REPOSITORY=${RESTIC_REPOSITORY_BASE}/$name
+
+    # On essaie de lister les snapshots, sinon on initialise le depot
+    $RESTIC_COMMAND list snapshots > >(tee -a $LOGFILE) 2> >(tee -a $ERRFILE >&2) || $RESTIC_COMMAND init > >(tee -a $LOGFILE) 2> >(tee -a $ERRFILE >&2)
+}
+
+do_backup() {
+
+    work_dir="$1"
+    name="$2"
+    repo="$3"
+    size="$4"
+    description="$5"
+    export RESTIC_PASSWORD
+    export RESTIC_REPOSITORY=${RESTIC_REPOSITORY_BASE}/$name
+    current_date=$(date +"%d_%m_%y_%H:%M")
+    pushd $work_dir
+    $RESTIC_COMMAND backup ./ > >(tee -a $LOGFILE) 2> >(tee -a $ERRFILE >&2)
+    backup_return_code="$?"
+    popd
+
+    # On ne nettoie que si la sauvegarde s'est bien passee
+    if [ "$backup_return_code" -eq "0" ];then
+        $RESTIC_COMMAND forget --keep-daily 7 --keep-weekly 8 --keep-monthly 12 > >(tee -a $LOGFILE) 2> >(tee -a $ERRFILE >&2)
+    else
+        echo "Something went wrong during backup" > >(tee -a $ERRFILE >&2)
+        exit 1
+    fi
+}
+
+work_dir=$2
+name=$3
+
+size=$5
+description=$6
+
+case "$1" in
+  need_mount)
+    do_need_mount $work_dir $name $repo $size $description
+    ;;
+  backup)
+    do_backup $work_dir $name $repo $size $description
+    ;;
+  mount)
+    do_need_mount $work_dir $name $repo $size $description
+    ;;
+  *)
+    echo "hook called with unknown argument \`$1'" >&2
+    exit 1
+    ;;
+esac
+
+exit 0

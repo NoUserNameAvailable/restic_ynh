@@ -13,8 +13,8 @@ source /usr/share/yunohost/helpers
 # MANAGE SCRIPT FAILURE
 #=================================================
 
-ynh_clean_setup () {
-	ynh_clean_check_starting
+ynh_clean_setup() {
+  ynh_clean_check_starting
 }
 # Exit if an error occurs during the execution of the script
 ynh_abort_if_errors
@@ -26,7 +26,7 @@ export app=$YNH_APP_INSTANCE_NAME
 export final_path="/opt/yunohost/${app}"
 
 # Retrieve arguments
-ynh_export server port ssh_user backup_path passphrase on_calendar check_on_calendar check_read_data_on_calendar conf data apps allow_extra_space_use
+ynh_export server port ssh_user backup_path passphrase on_calendar check_on_calendar check_read_data_on_calendar conf data apps allow_extra_space_use backup_server_type s3_server s3_port s3_aws_access_key_id s3_aws_secret_access_key s3_bucket
 
 #=================================================
 # STORE SETTINGS FROM MANIFEST
@@ -51,25 +51,41 @@ useradd -m ${app}
 
 ynh_script_progression --message="Configure ${app} user sudoer rights"
 
-cat > /tmp/${app}_sudoer << EOSUDOER
+cat >/tmp/${app}_sudoer <<EOSUDOER
 ${app} ALL = (root) NOPASSWD: /usr/bin/yunohost*, /bin/journalctl*, /usr/bin/find /etc/yunohost/apps -name backup, ${final_path}/check_method_${app}
 EOSUDOER
 visudo -cf /tmp/${app}_sudoer && mv /tmp/${app}_sudoer /etc/sudoers.d/${app}
+
+# TODO add if to check which methods to use (S3 sftp...)
+ynh_script_progression --message="***value of backup_server_type=$backup_server_type"
+case $backup_server_type in
+s3)
+  selected_backup_method="backup_method_s3"
+  ;;
+sftp)
+  selected_backup_method="backup_method_sftp"
+  ;;
+*)
+  echo -n "unknown"
+  ;;
+esac
+
+ynh_script_progression --message="***value of selected_backup_method=${selected_backup_method}"
 
 #=================================================
 # ACTIVATE BACKUP METHODS
 #=================================================
 ynh_script_progression --message="Activating backup methods"
 
-mkdir -p /etc/yunohost/hooks.d/backup_method
-mkdir -p /usr/share/yunohost/backup_method
+mkdir -p /etc/yunohost/hooks.d/${selected_backup_method}
+mkdir -p /usr/share/yunohost/${selected_backup_method}
 
 #=================================================
 # SETUP THE BACKUP METHOD
 #=================================================
 ynh_script_progression --message="Setting up backup methods"
 
-ynh_configure backup_method "/etc/yunohost/hooks.d/backup_method/05-${app}_app"
+ynh_configure $selected_backup_method "/etc/yunohost/hooks.d/${selected_backup_method}/05-${app}_app"
 ynh_configure check_method "${final_path}/check_method_${app}"
 
 #=================================================
@@ -129,65 +145,67 @@ ynh_use_logrotate --logfile=/var/log/restic_backup_${app}.err
 ynh_use_logrotate --logfile=/var/log/restic_check_${app}.log
 ynh_use_logrotate --logfile=/var/log/restic_check_${app}.err
 
-#=================================================
-# GENERATE SSH KEY
-#=================================================
-ynh_script_progression --message="Generating private key"
-ssh_dir="/root/.ssh"
-if [ ! -d "${ssh_dir}" ];then
-  mkdir -p "${ssh_dir}"
-fi
-private_key="${ssh_dir}/id_${app}_ed25519"
-test -f $private_key || ssh-keygen -q -t ed25519 -N "" -f $private_key
+if [[ "$selected_backup_method" == "sftp" ]]; then
+  #=================================================
+  # GENERATE SSH KEY
+  #=================================================
+  ynh_script_progression --message="Generating private key"
+  ssh_dir="/root/.ssh"
+  if [ ! -d "${ssh_dir}" ]; then
+    mkdir -p "${ssh_dir}"
+  fi
+  private_key="${ssh_dir}/id_${app}_ed25519"
+  test -f $private_key || ssh-keygen -q -t ed25519 -N "" -f $private_key
 
-#=================================================
-# GENERATE SSH CONFIG
-#=================================================
-ynh_script_progression --message="Generating ssh config for ${app} server ${server}"
+  #=================================================
+  # GENERATE SSH CONFIG
+  #=================================================
+  ynh_script_progression --message="Generating ssh config for ${app} server ${server}"
 
-grep -q "${app}" ${ssh_dir}/config 2>/dev/null || cat << EOCONF >> ${ssh_dir}/config
-# begin $app ssh config
-Host ${server}
-  Hostname ${server}
-  Port ${port}
-  User ${ssh_user}
-  IdentityFile ${private_key}
-  StrictHostKeyChecking no
-  UserKnownHostsFile /dev/null
-# end $app ssh config
+  grep -q "${app}" ${ssh_dir}/config 2>/dev/null || cat <<EOCONF >>${ssh_dir}/config
+    # begin $app ssh config
+    Host ${server}
+      Hostname ${server}
+      Port ${port}
+      User ${ssh_user}
+      IdentityFile ${private_key}
+      StrictHostKeyChecking no
+      UserKnownHostsFile /dev/null
+    # end $app ssh config
 EOCONF
 
-#=================================================
-# Display key
-#=================================================
-ynh_script_progression --message="You should now allow the following public key for user ${ssh_user} on server ${server}:
+  #=================================================
+  # Display key
+  #=================================================
+  ynh_script_progression --message="You should now allow the following public key for user ${ssh_user} on server ${server}:
 
-$(cat ${private_key}.pub)"
+  $(cat ${private_key}.pub)"
 
+  #=================================================
+  # SEND A README FOR THE ADMIN
+  #=================================================
+  ynh_script_progression --message="Sending post-installation instructions to admin" --last
+  ynh_print_OFF
+  message="You should now allow the following public key for user ${ssh_user} on server ${server}:
+  $(cat ${private_key}.pub)
 
-#=================================================
-# SEND A README FOR THE ADMIN
-#=================================================
-ynh_script_progression --message="Sending post-installation instructions to admin" --last
-ynh_print_OFF
-message="You should now allow the following public key for user ${ssh_user} on server ${server}:
-$(cat ${private_key}.pub)
+  Do so by running those commands on ${server} with user ${ssh_user}:
 
-Do so by running those commands on ${server} with user ${ssh_user}:
+  mkdir ~/.ssh 2>/dev/null
+  touch ~/.ssh/authorized_keys
+  chmod u=rw,go= ~/.ssh/authorized_keys
+  cat << EOPKEY >> ~/.ssh/authorized_keys
+  $(cat ${private_key}.pub)
+  EOPKEY
 
-mkdir ~/.ssh 2>/dev/null
-touch ~/.ssh/authorized_keys
-chmod u=rw,go= ~/.ssh/authorized_keys
-cat << EOPKEY >> ~/.ssh/authorized_keys
-$(cat ${private_key}.pub)
-EOPKEY
+  $(if [ "$backup_path" != "./" ]; then echo "Also make sure ${backup_path} exists and is writable by ${ssh_user}"; fi)
 
-$(if [ "$backup_path" != "./" ];then echo "Also make sure ${backup_path} exists and is writable by ${ssh_user}";fi)
+  If you're facing an issue or want to improve this app, please open a new issue in this project: https://github.com/YunoHost-Apps/restic_ynh"
 
-If you're facing an issue or want to improve this app, please open a new issue in this project: https://github.com/YunoHost-Apps/restic_ynh"
+  ynh_send_readme_to_admin "$message" "root"
+  ynh_print_ON
 
-ynh_send_readme_to_admin "$message" "root"
-ynh_print_ON
+fi
 
 #=================================================
 # END OF SCRIPT
