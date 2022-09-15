@@ -24,6 +24,7 @@ ynh_print_info --message="Loading installation settings..."
 
 export app=$YNH_APP_INSTANCE_NAME
 export final_path="/opt/yunohost/${app}"
+export selected_backup_method=$(ynh_app_setting_get $app selected_backup_method)
 
 #=================================================
 # DECLARE DATA AND CONF FILES TO BACKUP
@@ -42,7 +43,7 @@ ynh_backup "/etc/systemd/system/${app}_check.service"
 ynh_backup "/etc/systemd/system/${app}_check.timer"
 ynh_backup "/etc/systemd/system/${app}_check_read_data.service"
 ynh_backup "/etc/systemd/system/${app}_check_read_data.timer"
-ynh_backup "/etc/yunohost/hooks.d/backup_method/05-${app}_app"
+ynh_backup "/etc/yunohost/hooks.d/${selected_backup_method}/05-${app}_app"
 ynh_backup "${final_path}/check_method_${app}"
 ynh_backup "${final_path}/restic_log_${app}"
 ssh_dir="/root/.ssh"

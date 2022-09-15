@@ -33,7 +33,7 @@ ynh_export server port ssh_user backup_path passphrase on_calendar check_on_cale
 #=================================================
 ynh_script_progression --message="Storing installation settings..."
 
-ynh_save_args server port ssh_user backup_path passphrase on_calendar check_on_calendar check_read_data_on_calendar conf data apps allow_extra_space_use
+ynh_save_args server port ssh_user backup_path passphrase on_calendar check_on_calendar check_read_data_on_calendar conf data apps allow_extra_space_use backup_server_type s3_server s3_port s3_aws_access_key_id s3_aws_secret_access_key s3_bucket
 
 #=================================================
 # INSTALL RESTIC
@@ -69,6 +69,8 @@ sftp)
   echo -n "unknown"
   ;;
 esac
+
+ynh_save_args selected_backup_method
 
 ynh_script_progression --message="***value of selected_backup_method=${selected_backup_method}"
 
