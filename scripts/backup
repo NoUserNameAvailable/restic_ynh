@@ -24,13 +24,13 @@ ynh_print_info --message="Loading installation settings..."
 
 export app=$YNH_APP_INSTANCE_NAME
 export final_path="/opt/yunohost/${app}"
-export selected_backup_method=$(ynh_app_setting_get $app selected_backup_method)
+export export selected_backup_method=$(ynh_app_setting_get $app selected_backup_method)
+backup_server_type = $(ynh_app_setting_get $app backup_server_type)
 
 #=================================================
 # DECLARE DATA AND CONF FILES TO BACKUP
 #=================================================
 ynh_print_info --message="Declaring files to be backed up..."
-
 
 #=================================================
 # BACKUP VARIOUS FILES
@@ -46,10 +46,13 @@ ynh_backup "/etc/systemd/system/${app}_check_read_data.timer"
 ynh_backup "/etc/yunohost/hooks.d/${selected_backup_method}/05-${app}_app"
 ynh_backup "${final_path}/check_method_${app}"
 ynh_backup "${final_path}/restic_log_${app}"
-ssh_dir="/root/.ssh"
-ynh_backup "${ssh_dir}/id_${app}_ed25519"
-ynh_backup "${ssh_dir}/id_${app}_ed25519.pub"
-ynh_backup "${ssh_dir}/config"
+
+if [[ "backup_server_type" == "sftp" ]]; then
+  ssh_dir="/root/.ssh"
+  ynh_backup "${ssh_dir}/id_${app}_ed25519"
+  ynh_backup "${ssh_dir}/id_${app}_ed25519.pub"
+  ynh_backup "${ssh_dir}/config"
+fi
 
 #=================================================
 # END OF SCRIPT
