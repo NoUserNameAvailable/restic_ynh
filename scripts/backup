@@ -25,7 +25,7 @@ ynh_print_info --message="Loading installation settings..."
 export app=$YNH_APP_INSTANCE_NAME
 export final_path="/opt/yunohost/${app}"
 export export selected_backup_method=$(ynh_app_setting_get $app selected_backup_method)
-backup_server_type = $(ynh_app_setting_get $app backup_server_type)
+backup_server_type=$(ynh_app_setting_get $app backup_server_type)
 
 #=================================================
 # DECLARE DATA AND CONF FILES TO BACKUP

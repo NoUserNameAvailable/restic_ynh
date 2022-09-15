@@ -72,22 +72,21 @@ esac
 
 ynh_save_args selected_backup_method
 
-ynh_script_progression --message="***value of selected_backup_method=${selected_backup_method}"
 
 #=================================================
 # ACTIVATE BACKUP METHODS
 #=================================================
 ynh_script_progression --message="Activating backup methods"
 
-mkdir -p /etc/yunohost/hooks.d/${selected_backup_method}
-mkdir -p /usr/share/yunohost/${selected_backup_method}
+mkdir -p /etc/yunohost/hooks.d/backup_method
+mkdir -p /usr/share/yunohost/backup_method
 
 #=================================================
 # SETUP THE BACKUP METHOD
 #=================================================
 ynh_script_progression --message="Setting up backup methods"
 
-ynh_configure $selected_backup_method "/etc/yunohost/hooks.d/${selected_backup_method}/05-${app}_app"
+ynh_configure backup_method "/etc/yunohost/hooks.d/backup_method/05-${app}_app"
 ynh_configure check_method "${final_path}/check_method_${app}"
 
 #=================================================

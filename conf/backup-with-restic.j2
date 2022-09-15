@@ -1,5 +1,6 @@
 #!/bin/bash
 LOCK_FILE=/tmp/{{ app }}_backup.lock
+
 EXIT_PROPERLY() {
   echo -e "\e[91m \e[1m"    # Shell in light red bold
   echo -e "!!\n  Caught an interruption signal,  removing lock file...\n!!"
