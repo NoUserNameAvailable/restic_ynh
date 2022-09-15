@@ -1,5 +1,8 @@
 #!/bin/bash
 LOCK_FILE=/tmp/{{ app }}_backup.lock
+
+selected_backup_method=$(ynh_app_setting_get {{ app }} selected_backup_method)
+
 EXIT_PROPERLY() {
   echo -e "\e[91m \e[1m"    # Shell in light red bold
   echo -e "!!\n  Caught an interruption signal,  removing lock file...\n!!"
@@ -28,13 +31,13 @@ filter_hooks() {
 # Backup system part conf
 conf=$(sudo yunohost app setting {{ app }} conf)
 if [ $conf -eq 1 ];then
-  sudo yunohost backup create $ignore_apps -n auto_conf --method {{ app }}_app --system $(filter_hooks conf)
+  sudo yunohost backup create $ignore_apps -n auto_conf --method {{ app }}_app_${selected_backup_method} --system $(filter_hooks conf)
 fi
 
 # Backup system data
 data=$(sudo yunohost app setting {{ app }} data)
 if [ $data -eq 1 ];then
-  sudo yunohost backup create $ignore_apps -n auto_data --method {{ app }}_app --system $(filter_hooks data)
+  sudo yunohost backup create $ignore_apps -n auto_data --method {{ app }}_app_${selected_backup_method} --system $(filter_hooks data)
 fi
 
 # Backup all apps independently
@@ -48,7 +51,7 @@ for app in $(sudo /usr/bin/find /etc/yunohost/apps -name backup | cut -d / -f 5)
     fi
   done
   if [ "$backup_app" == "true" ];then
-    sudo yunohost backup create $ignore_system -n auto_$app --method {{ app }}_app --apps $app
+    sudo yunohost backup create $ignore_system -n auto_$app --method {{ app }}_app_${selected_backup_method} --apps $app
   fi
 done
 rm "$LOCK_FILE"

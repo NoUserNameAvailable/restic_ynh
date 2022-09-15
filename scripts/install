@@ -87,7 +87,7 @@ mkdir -p /usr/share/yunohost/${selected_backup_method}
 #=================================================
 ynh_script_progression --message="Setting up backup methods"
 
-ynh_configure $selected_backup_method "/etc/yunohost/hooks.d/${selected_backup_method}/05-${app}_app"
+ynh_configure ${selected_backup_method} "/etc/yunohost/hooks.d/backup_method/05-${app}_app_${selected_backup_method}"
 ynh_configure check_method "${final_path}/check_method_${app}"
 
 #=================================================
