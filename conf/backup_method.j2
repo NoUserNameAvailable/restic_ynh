@@ -27,8 +27,9 @@ do_need_mount() {
     export RESTIC_PASSWORD
     export RESTIC_REPOSITORY=${RESTIC_REPOSITORY_BASE}/$name
 
+
     # On essaie de lister les snapshots, sinon on initialise le depot
-    $RESTIC_COMMAND list snapshots > >(tee -a $LOGFILE) 2> >(tee -a $ERRFILE >&2) || $RESTIC_COMMAND init > >(tee -a $LOGFILE) 2> >(tee -a $ERRFILE >&2)
+    $RESTIC_COMMAND "$RESTIC_REPOSITORY" list snapshots > >(tee -a $LOGFILE) 2> >(tee -a $ERRFILE >&2) || $RESTIC_COMMAND init > >(tee -a $LOGFILE) 2> >(tee -a $ERRFILE >&2)
 }
 
 do_backup() {
